@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en" data-lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Bulk Timecode Calculator · Flask</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}?v={{ version }}"/>
+</head>
+<body>
+  <header>
+    <div class="header-row">
+      <div class="title-wrap">
+        <h1 data-i18n="title">Bulk Timecode Calculator</h1>
+        <p class="sub" data-i18n="subtitle">Batch diff/sum · Supports 23.976/24/25/29.97/30/50/59.94/60 and Drop‑Frame for 29.97/59.94. Paste from Excel, auto colonize 8-digit inputs, one‑click copy results.</p>
+      </div>
+      <div class="lang-wrap">
+        <a class="mini" href="/">← Portal</a>
+        <button id="langToggle" class="mini" title="Switch language">中文 / EN</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="controls">
+    <div class="row">
+      <label><span data-i18n="fpsLabel">Frame rate (FPS):</span>
+        <select id="fpsPreset">
+          <option value="23.976">23.976</option>
+          <option value="24">24</option>
+          <option value="25">25</option>
+          <option value="29.97" selected>29.97</option>
+          <option value="30">30</option>
+          <option value="50">50</option>
+          <option value="59.94">59.94</option>
+          <option value="60">60</option>
+          <option value="custom" data-i18n="customFpsOption">Custom…</option>
+        </select>
+      </label>
+      <label id="customFpsWrap" class="hidden"><span data-i18n="customFpsLabel">Custom FPS:</span>
+        <input type="number" step="0.0001" min="1" id="customFps" placeholder="e.g. 47.952"/>
+      </label>
+      <label title="DF only applies to 29.97 and 59.94">
+        <input type="checkbox" id="dropFrame"/> <span data-i18n="dfLabel">Drop‑Frame (DF)</span>
+      </label>
+      <label>
+        <span data-i18n="opLabel">Operation:</span>
+        <select id="op">
+          <option value="diff" data-i18n="opDiff">Difference (B − A)</option>
+          <option value="sum" data-i18n="opSum">Sum (A + B)</option>
+        </select>
+      </label>
+      <label>
+        <span data-i18n="outModeLabel">Output:</span>
+        <select id="outMode">
+          <option value="tc" data-i18n="outTC">Timecode (HH:MM:SS:FF/;FF)</option>
+          <option value="frames" data-i18n="outFrames">Total frames</option>
+          <option value="both" selected data-i18n="outBoth">Both</option>
+        </select>
+      </label>
+      <button id="calcBtn" class="primary" data-i18n="calc">Calculate</button>
+    </div>
+    <div class="hint" data-i18n="hint">
+      Tip: Typing 8 digits like 01000000 auto‑colonizes to 01:00:00:00. Paste area accepts one column (A or B) or two columns (A+B).
+    </div>
+  </section>
+
+  <section class="grid-wrap">
+    <div class="grid-header">
+      <div class="col a">
+        <span data-i18n="colA">A Start timecode</span>
+        <button class="mini" data-paste="A" data-i18n="paste">Paste</button>
+      </div>
+      <div class="col b">
+        <span data-i18n="colB">B End/Addend</span>
+        <button class="mini" data-paste="B" data-i18n="paste">Paste</button>
+      </div>
+      <div class="col res">
+        <span data-i18n="colRes">Result</span>
+        <button class="mini" id="copyTC" data-i18n="copyTC">Copy timecode</button>
+        <button class="mini" id="copyFrames" data-i18n="copyFrames">Copy frames</button>
+        <button class="mini" data-paste="PAIR" data-i18n="pastePair">Paste two columns</button>
+      </div>
+    </div>
+    <div id="grid"></div>
+    <div class="grid-actions">
+      <button id="addRows" data-i18n="addRows">+ Add 10 rows</button>
+      <button id="clearRows" data-i18n="clearRows">Clear</button>
+    </div>
+  </section>
+
+  <section class="legend">
+    <details>
+      <summary data-i18n="legendSummary">About 23.976 and Drop‑Frame (click to open)</summary>
+      <div id="legendHTML">
+        <p>23.976 is actually <code>24000/1001</code> fps. Timecode still counts 24 frames per “TC second”, so one TC second is ~1.001 real seconds. Industry convention: <b>23.976 uses NDF (no DF)</b>. <b>DF applies only to 29.97 (drop 2f/min, not every 10th) and 59.94 (drop 4f/min, not every 10th).</b></p>
+        <ul>
+          <li>DF only skips frame numbers to align wall‑clock, it does not drop picture frames.</li>
+          <li>DF timecode is written with semicolon: <code>HH:MM:SS;FF</code>.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <dialog id="pasteModal">
+    <form method="dialog" class="paste">
+      <h3 id="pasteTitle" data-i18n="pasteTitle">Bulk Paste</h3>
+      <textarea id="pasteBox" placeholder="You can paste from Excel. One or two columns separated by TAB/comma/space."></textarea>
+      <menu>
+        <button value="cancel" data-i18n="cancel">Cancel</button>
+        <button id="pasteConfirm" value="ok" class="primary" data-i18n="import">Import</button>
+      </menu>
+      <div class="tiny-hint" id="pasteSample">
+        Example (two columns): <code>01:00:00:00<TAB>01:00:10:00</code>
+      </div>
+    </form>
+  </dialog>
+
+  <footer>
+    <div data-i18n="footer">Made with Flask + vanilla JS. Single‑file front‑end, easy to drop into suites/machines.</div>
+  </footer>
+
+  <script defer src="{{ url_for('static', filename='script.js') }}?v={{ version }}"></script>
+</body>
+</html>

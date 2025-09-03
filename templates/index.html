@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Portal{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>妙妙小工具入口站 / Little Tools Portal</h1>
+  <p>这是总入口，将来可以把所有工具都放在这里的卡片里。现在先上线 Timecode。</p>
+</section>
+<section class="cards">
+  <a class="card" href="/timecode">
+    <h3>Timecode 计算器</h3>
+    <p>批量差值/加值，支持 23.976/24/25/29.97/30/50/59.94/60，29.97/59.94 丢帧。</p>
+    <span class="pill">进入 / Open</span>
+  </a>
+  <!-- 未来：在这里继续添加其他工具卡片 -->
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+// 简单把语言按钮接上（随 timecode 页同逻辑）
+document.getElementById('langToggle')?.addEventListener('click', () => {
+  const now = localStorage.getItem('tc_lang') || 'en';
+  localStorage.setItem('tc_lang', now === 'en' ? 'zh' : 'en');
+  location.reload();
+});
+</script>
+{% endblock %}
