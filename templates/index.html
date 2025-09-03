@@ -1,10 +1,17 @@
 {% extends "base.html" %}
 {% block title %}妙妙小工具{% endblock %}
 {% block content %}
+
 <section class="hero">
-  <h1>妙妙小工具入口</h1>
-  <p>把常用的小工具都放在这里，一键进入。</p>
+  <div class="lang-wrap">
+    <h1 id="titleText">妙妙小工具入口</h1>
+    <button id="langToggle" class="mini">中文 / EN</button>
+  </div>
+  <p id="subtitleText">把常用的小工具都放在这里，一键进入。</p>
 </section>
+
+
+
 <section class="cards">
   {% for t in tools %}
     <a class="card" href="{{ t.path }}">
@@ -19,4 +26,8 @@
     </div>
   {% endfor %}
 </section>
+{% endblock %}
+
+{% block scripts %}
+  <script defer src="{{ url_for('static', filename='index.js') }}?v=2025-09-03-08"></script>
 {% endblock %}
