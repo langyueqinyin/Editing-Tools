@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}妙妙小工具{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>妙妙小工具入口</h1>
+  <p>把常用的小工具都放在这里，一键进入。</p>
+</section>
+<section class="cards">
+  {% for t in tools %}
+    <a class="card" href="{{ t.path }}">
+      <h3>{{ t.title }}</h3>
+      <p>{{ t.desc }}</p>
+      <span class="pill">进入 / Open</span>
+    </a>
+  {% else %}
+    <div class="card">
+      <h3>还没有工具</h3>
+      <p>把第一个工具放到 /tools 目录里吧～</p>
+    </div>
+  {% endfor %}
+</section>
+{% endblock %}

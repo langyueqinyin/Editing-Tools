@@ -1,0 +1,6 @@
+{
+  "slug": "archetype",
+  "name": "人物原型坐标图",
+  "desc": "D3 交互可视化；点选原型看全作品角色与注记",
+  "entry": "web:bp"
+}

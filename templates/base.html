@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh" data-lang="zh">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>{% block title %}妙妙小工具{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}?v={{ version|default('1') }}"/>
+</head>
+<body>
+  <header class="nav">
+    <a class="brand" href="/">妙妙小工具 · Portal</a>
+    <nav class="right">
+      <a href="/">首页</a>
+    </nav>
+  </header>
+  <main>{% block content %}{% endblock %}</main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>人物原型坐标图 · Archetypes × Works</title>
+<style>
+  :root{
+    --bg:#f7fafc; --ink:#0f172a; --muted:#475569; --accent:#2563eb;
+    --grid:#e5e7eb; --card:#ffffff; --border:#e5e7eb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink)}
+  header{padding:14px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(255,255,255,.85);backdrop-filter:blur(8px);z-index:2}
+  h1{font-size:18px;margin:0}
+  .wrap{display:grid;grid-template-columns:minmax(320px,1fr) 340px;gap:16px;padding:16px;max-width:1200px;margin:0 auto}
+  @media (max-width:1100px){ .wrap{grid-template-columns:1fr} }
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:16px}
+  #plot{padding:12px}
+  #list{padding:12px;max-height:78vh;overflow:auto}
+
+  /* 自适应 SVG */
+  #svg{width:100%;height:auto;aspect-ratio:3/2;display:block}
+
+  .plotbar{display:flex;align-items:center;gap:8px;padding:8px 12px 0 12px}
+  .plotbar label{font-size:12px;color:#475569}
+  .select{padding:6px 10px;border:1px solid var(--border);border-radius:10px;background:#fff;color:#0f172a}
+
+  .axisLabel{fill:var(--muted); font-size:12px}
+  .tick text{fill:#64748b;font-size:10px}
+  .tick line{stroke:var(--grid)}
+  .domain{stroke:#cbd5e1}
+
+  .node{opacity:.9; transition:transform .15s ease, opacity .15s ease; cursor:pointer}
+  .node:hover{opacity:1; transform:scale(1.06)}
+  .node.selected{stroke:var(--accent) !important; stroke-width:2.8 !important}
+
+  .nodeLabel{fill:#334155; font-size:11px; opacity:.9; pointer-events:none}
+  .nodeLabel tspan.role{ fill:#475569; font-size:10px; opacity:.95 }
+  .highlight{opacity:1 !important}
+  .pulse{stroke:var(--accent); stroke-width:2; fill:transparent; opacity:.9; animation:pulse 1.2s ease-out infinite; pointer-events:none}
+  @keyframes pulse {0%{r:0; opacity:.9} 80%{r:22; opacity:0} 100%{opacity:0}}
+
+  .work{padding:10px 12px;border-radius:10px;cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:center;border:1px solid transparent}
+  .work:hover{background:#f8fafc;border-color:#e5e7eb}
+  .work.active{background:#eef2ff;border-color:#c7d2fe}
+  .badge{background:#eef2ff;border:1px solid #e0e7ff;color:#3730a3;border-radius:999px;padding:2px 8px;font-size:11px}
+  .muted{color:var(--muted)}
+  .toolbar{display:flex;gap:10px;align-items:center;padding:0 12px 12px}
+  input[type="search"]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:#fff;color:#0f172a;outline:none}
+  #legend{padding:12px;border-top:1px dashed var(--border)}
+  #legend h3{font-size:12px;margin:0 0 8px;color:#0f172a}
+  #legend .line{font-size:12px;color:#1f2937;margin:2px 0}
+  #archRoles{padding:12px;border-top:1px dashed var(--border)}
+  #archRoles h3{font-size:12px;margin:0 0 8px;color:#0f172a}
+  #archRoles .line{font-size:12px;color:#1f2937;margin:2px 0}
+  .axesNote{font-size:12px;color:#64748b;padding:0 12px 12px}
+</style>
+</head>
+<body>
+<header><h1>人物原型坐标图 · Archetypes × Works</h1></header>
+<div class="wrap">
+  <section class="panel" id="plot">
+    <div class="plotbar">
+      <label for="axesSel">坐标系：</label>
+      <select id="axesSel" class="select">
+        <option value="base">主动/结构</option>
+        <option value="tone">轻/重 × 清/浊</option>
+      </select>
+    </div>
+    <svg id="svg"></svg>
+    <div class="axesNote" id="axesNote">当前：横轴=主动程度（左=被动，右=主动） · 纵轴=对结构/体系的态度（下=反结构，上=亲结构）</div>
+    <div id="legend"></div>
+    <div id="archRoles"></div>
+  </section>
+  <aside class="panel">
+    <div class="toolbar">
+      <input id="q" type="search" placeholder="搜索作品…">
+      <span class="badge" id="count"></span>
+    </div>
+    <div id="list"></div>
+  </aside>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script>
+const POSITIONS = [{"archetype": "官杀男", "x": 100, "y": 90, "masc": 0.5, "parent": NaN, "x2": 60, "y2": 65}, {"archetype": "变种：社畜牛马命苦男妈妈", "x": 50, "y": 50, "masc": 0.8, "parent": "官杀男", "x2": 35, "y2": 30}, {"archetype": "变种：协助作恶者", "x": 0, "y": -20, "masc": 0.5, "parent": "官杀男", "x2": -35, "y2": -50}, {"archetype": "变种：高洁堕落者", "x": 30, "y": -30, "masc": 0.5, "parent": "官杀男", "x2": 60, "y2": -40}, {"archetype": "炽烈真诚野性大傻子", "x": 100, "y": 50, "masc": 0.8, "parent": NaN, "x2": -50, "y2": 80}, {"archetype": "变种：克制忠仆骑士", "x": -60, "y": 30, "masc": 0.9, "parent": "炽烈真诚野性大傻子", "x2": 60, "y2": 80}, {"archetype": "明亮自信伤官浪子", "x": 80, "y": 30, "masc": 0.5, "parent": NaN, "x2": -20, "y2": 60}, {"archetype": "变种：Trickstar", "x": 100, "y": -75, "masc": 0.5, "parent": "明亮自信伤官浪子", "x2": -80, "y2": -90}, {"archetype": "变种：狂气大叔", "x": 70, "y": -30, "masc": 1.0, "parent": "明亮自信伤官浪子", "x2": 70, "y2": -75}, {"archetype": "女性变种：有意的性感尤物", "x": 40, "y": -50, "masc": 0.0, "parent": "明亮自信伤官浪子", "x2": -30, "y2": -90}, {"archetype": "女性变种2：攻击性（对内对外异常的毁灭感和死本能）", "x": 100, "y": -100, "masc": 0.0, "parent": "明亮自信伤官浪子", "x2": 80, "y2": -90}, {"archetype": "阴郁雨中自毁大狗狗", "x": -40, "y": -20, "masc": 0.5, "parent": NaN, "x2": 80, "y2": -30}, {"archetype": "变种：腹黑温雅助攻男二（出门面美人）", "x": -30, "y": 0, "masc": 0.6, "parent": "阴郁雨中自毁大狗狗", "x2": -30, "y2": 20}, {"archetype": "疯癫的贤者", "x": -50, "y": -100, "masc": 0.3, "parent": NaN, "x2": -90, "y2": 35}, {"archetype": "变种：反讽型叙事者 / 观察者", "x": 0, "y": -80, "masc": 0.5, "parent": "疯癫的贤者", "x2": 75, "y2": 0}, {"archetype": "大母神", "x": 0, "y": 50, "masc": 0.0, "parent": NaN, "x2": 0, "y2": -30}, {"archetype": "变种（预备）：明亮正向晨间剧女主，野草型", "x": 75, "y": 70, "masc": 0.0, "parent": "大母神", "x2": -50, "y2": 90}, {"archetype": "反叛/自我流放者", "x": 50, "y": -100, "masc": 0.5, "parent": NaN, "x2": -20, "y2": 30}, {"archetype": "彼得潘", "x": -90, "y": 0, "masc": 0.7, "parent": NaN, "x2": -95, "y2": 95}];
+const WORKS = [{"name": "网球王子", "roles": {"官杀男": "手冢国光", "炽烈真诚野性大傻子": "千石清纯", "变种：克制忠仆骑士": "桦地", "明亮自信伤官浪子": "跡部景吾", "变种：狂气大叔": "越前南次郎", "女性变种2：攻击性（对内对外异常的毁灭感和死本能）": "切原赤也", "变种：腹黑温雅助攻男二（出门面美人）": "不二周助", "大母神": "幸村精市？"}}, {"name": "死神", "roles": {"官杀男": "朽木白哉", "变种：社畜牛马命苦男妈妈": "浮竹十四郎", "炽烈真诚野性大傻子": "更木剑八/葛力姆乔", "变种：克制忠仆骑士": "茶渡泰虎", "明亮自信伤官浪子": "志波海燕", "变种：狂气大叔": "京乐春水", "女性变种：有意的性感尤物": "乱菊", "变种：腹黑温雅助攻男二（出门面美人）": "市丸银", "大母神": "卯之花烈", "变种（预备）：明亮正向晨间剧女主，野草型": "井上织姬", "反叛/自我流放者": "夜一"}}, {"name": "樱兰高校", "roles": {"官杀男": "凤镜夜", "变种：克制忠仆骑士": "恬前辈", "变种：Trickstar": "常陆院双子", "变种：腹黑温雅助攻男二（出门面美人）": "凤镜夜", "变种（预备）：明亮正向晨间剧女主，野草型": "春绯", "彼得潘": "须王环"}}, {"name": "恋与深空", "roles": {"官杀男": "黎深", "变种：社畜牛马命苦男妈妈": "黎深", "变种：高洁堕落者": "夏以昼（？）", "炽烈真诚野性大傻子": "风临野", "明亮自信伤官浪子": "祁煜", "变种：Trickstar": "秦彻双子", "变种：腹黑温雅助攻男二（出门面美人）": "沈星回", "变种（预备）：明亮正向晨间剧女主，野草型": "女主", "反叛/自我流放者": "秦彻"}}, {"name": "明日方舟", "roles": {"官杀男": "玛恩纳", "变种：社畜牛马命苦男妈妈": "玛恩纳", "炽烈真诚野性大傻子": "贾维", "变种：克制忠仆骑士": "角峰", "明亮自信伤官浪子": "银灰？", "变种：反讽型叙事者 / 观察者": "老鲤", "大母神": "黍", "变种（预备）：明亮正向晨间剧女主，野草型": "艾雅法拉"}}, {"name": "明日方舟", "roles": {"变种：社畜牛马命苦男妈妈": "棘刺", "变种：高洁堕落者": "乌尔比安（不是）", "炽烈真诚野性大傻子": "百炼嘉维尔", "明亮自信伤官浪子": "极境", "女性变种2：攻击性（对内对外异常的毁灭感和死本能）": "幽灵鲨", "变种：腹黑温雅助攻男二（出门面美人）": "Logos"}}, {"name": "原神", "roles": {"官杀男": "雷电将军、凝光", "变种：社畜牛马命苦男妈妈": "钟离", "炽烈真诚野性大傻子": "荒泷一斗", "变种：克制忠仆骑士": "托马", "明亮自信伤官浪子": "胡桃、温迪", "女性变种：有意的性感尤物": "水神？", "阴郁雨中自毁大狗狗": "卡维、砂金", "变种：腹黑温雅助攻男二（出门面美人）": "神里绫人，八重神子", "大母神": "小草神", "变种（预备）：明亮正向晨间剧女主，野草型": "香菱", "反叛/自我流放者": "枫原万叶"}}, {"name": "COD二创", "roles": {"官杀男": "Keegan", "炽烈真诚野性大傻子": "Soap", "阴郁雨中自毁大狗狗": "Krueger", "变种：反讽型叙事者 / 观察者": "Ghost"}}, {"name": "红楼梦", "roles": {"变种：协助作恶者": "王夫人", "变种：高洁堕落者": "秦可卿", "炽烈真诚野性大傻子": "薛蟠", "变种：克制忠仆骑士": "袭人", "明亮自信伤官浪子": "史湘云", "变种：Trickstar": "刘姥姥", "女性变种：有意的性感尤物": "凤姐", "女性变种2：攻击性（对内对外异常的毁灭感和死本能）": "晴雯", "变种：腹黑温雅助攻男二（出门面美人）": "宝钗", "疯癫的贤者": "一僧一道", "变种：反讽型叙事者 / 观察者": "焦大", "大母神": "刘姥姥", "变种（预备）：明亮正向晨间剧女主，野草型": "香菱", "反叛/自我流放者": "柳湘莲、惜春、妙玉", "彼得潘": "贾宝玉"}}, {"name": "士兵突击", "roles": {"官杀男": "伍六一", "变种：社畜牛马命苦男妈妈": "齐桓、指导员", "变种：高洁堕落者": "老马", "炽烈真诚野性大傻子": "许三多（？）", "明亮自信伤官浪子": "高城", "变种：Trickstar": "白铁军/甘小宁", "变种：狂气大叔": "袁朗", "阴郁雨中自毁大狗狗": "成才（？）", "变种：腹黑温雅助攻男二（出门面美人）": "吴哲", "变种：反讽型叙事者 / 观察者": "许二和", "大母神": "史今", "彼得潘": "李梦"}}, {"name": "我的团长我的团", "roles": {"官杀男": "虞啸卿", "变种：社畜牛马命苦男妈妈": "郝兽医", "变种：协助作恶者": "唐基？", "变种：高洁堕落者": "虞啸卿", "炽烈真诚野性大傻子": "迷龙", "变种：克制忠仆骑士": "豆饼", "明亮自信伤官浪子": "何书光", "变种：Trickstar": "不辣", "阴郁雨中自毁大狗狗": "孟烦了", "变种：腹黑温雅助攻男二（出门面美人）": "阿译（啊？）", "疯癫的贤者": "龙文章", "变种：反讽型叙事者 / 观察者": "麦师傅", "大母神": "上官戒慈、郝兽医", "变种（预备）：明亮正向晨间剧女主，野草型": "小醉、小书虫", "反叛/自我流放者": "迷龙（前期）", "彼得潘": "全民协助"}}, {"name": "甄嬛传", "roles": {"官杀男": "皇后", "变种：社畜牛马命苦男妈妈": "敬妃", "变种：协助作恶者": "曹琴默", "变种：高洁堕落者": "安陵容", "变种：克制忠仆骑士": "流朱、苏培盛、温太医", "明亮自信伤官浪子": "华妃", "变种：Trickstar": "欣贵人", "女性变种：有意的性感尤物": "祺贵人", "女性变种2：攻击性（对内对外异常的毁灭感和死本能）": "端妃", "阴郁雨中自毁大狗狗": "浣碧", "变种：腹黑温雅助攻男二（出门面美人）": "书里那个特喜欢皇帝的", "变种：反讽型叙事者 / 观察者": "眉庄", "大母神": "槿汐", "变种（预备）：明亮正向晨间剧女主，野草型": "玉娆", "反叛/自我流放者": "叶澜依", "彼得潘": "果郡王"}}, {"name": "狂飙", "roles": {"官杀男": "安欣", "变种：协助作恶者": "老默", "炽烈真诚野性大傻子": "唐小虎", "阴郁雨中自毁大狗狗": "后期安欣", "变种：腹黑温雅助攻男二（出门面美人）": "高启盛", "疯癫的贤者": "徐江", "大母神": "高叶大姐"}}, {"name": "长安的荔枝", "roles": {"变种：克制忠仆骑士": "林邑奴", "明亮自信伤官浪子": "白客版苏谅", "大母神": "男主老婆", "变种（预备）：明亮正向晨间剧女主，野草型": "阿僮"}}, {"name": "哈利波特", "roles": {"官杀男": "麦格", "变种：社畜牛马命苦男妈妈": "卢平", "变种：协助作恶者": "小矮星彼得", "变种：高洁堕落者": "雷古勒斯·布莱克", "炽烈真诚野性大傻子": "海格、罗恩", "变种：克制忠仆骑士": "多比", "明亮自信伤官浪子": "小天狼星（前）", "变种：Trickstar": "韦斯莱双子", "变种：狂气大叔": "穆迪？", "女性变种：有意的性感尤物": "芙蓉·德拉库尔", "女性变种2：攻击性（对内对外异常的毁灭感和死本能）": "贝拉特里克斯", "阴郁雨中自毁大狗狗": "斯内普", "疯癫的贤者": "特里劳妮、卢娜", "大母神": "韦斯莱太太", "变种（预备）：明亮正向晨间剧女主，野草型": "赫敏", "反叛/自我流放者": "格林德沃", "彼得潘": "洛哈特，小天狼星（后期）"}}, {"name": "魔戒", "roles": {"官杀男": "阿拉贡", "变种：协助作恶者": "萨鲁曼", "变种：高洁堕落者": "Boromir", "炽烈真诚野性大傻子": "Sam", "明亮自信伤官浪子": "Legolas", "变种（预备）：明亮正向晨间剧女主，野草型": "王女"}}, {"name": "老友记", "roles": {"官杀男": "Monica", "变种：社畜牛马命苦男妈妈": "Ross", "炽烈真诚野性大傻子": "Joey", "明亮自信伤官浪子": "Janice", "阴郁雨中自毁大狗狗": "Chandler", "疯癫的贤者": "Phoebe", "大母神": "Monica", "变种（预备）：明亮正向晨间剧女主，野草型": "Rachel", "彼得潘": "Ross"}}, {"name": "漫威复联", "roles": {"官杀男": "美国队长、黑豹", "变种：社畜牛马命苦男妈妈": "猎鹰", "炽烈真诚野性大傻子": "雷神", "明亮自信伤官浪子": "钢铁侠", "变种：Trickstar": "洛基", "变种：狂气大叔": "苏联队长？", "女性变种：有意的性感尤物": "黑寡妇", "女性变种2：攻击性（对内对外异常的毁灭感和死本能）": "猩红女巫", "阴郁雨中自毁大狗狗": "冬兵", "变种：腹黑温雅助攻男二（出门面美人）": "奇异博士"}}, {"name": "漫威X战警", "roles": {"官杀男": "镭射眼", "变种：社畜牛马命苦男妈妈": "野兽", "炽烈真诚野性大傻子": "冰人（Iceman / Bobby Drake）", "变种：克制忠仆骑士": "钢力士（Colossus）", "变种：Trickstar": "Deadpool、快银", "变种：狂气大叔": "金刚狼", "女性变种：有意的性感尤物": "灵蝶、魔形女", "女性变种2：攻击性（对内对外异常的毁灭感和死本能）": "黑凤凰", "阴郁雨中自毁大狗狗": "魔形女", "大母神": "X教授、暴风女", "反叛/自我流放者": "万磁王"}}, {"name": "DC", "roles": {"官杀男": "蝙蝠侠", "变种：高洁堕落者": "半边脸哥", "女性变种2：攻击性（对内对外异常的毁灭感和死本能）": "小丑女", "变种：反讽型叙事者 / 观察者": "小丑", "大母神": "神奇女侠", "彼得潘": "闪电侠、绿灯侠"}}, {"name": "卡巴莱", "roles": {"变种：社畜牛马命苦男妈妈": "Herr Schultz", "变种：协助作恶者": "纳粹军官", "变种：狂气大叔": "Sally后期", "女性变种：有意的性感尤物": "Sally前期", "女性变种2：攻击性（对内对外异常的毁灭感和死本能）": "妓女姐姐", "变种：反讽型叙事者 / 观察者": "Emcee", "大母神": "房东太太？"}}, {"name": "汉密尔顿", "roles": {"官杀男": "Burr", "变种：社畜牛马命苦男妈妈": "华盛顿", "变种：高洁堕落者": "汉密尔顿", "炽烈真诚野性大傻子": "Laurence", "明亮自信伤官浪子": "杰斐逊", "变种：Trickstar": "乔治三世", "女性变种：有意的性感尤物": "Maria", "女性变种2：攻击性（对内对外异常的毁灭感和死本能）": "Angelica（Congratulations段）", "变种：反讽型叙事者 / 观察者": "Burr兼职", "大母神": "Eliza", "变种（预备）：明亮正向晨间剧女主，野草型": "早期Eliza", "彼得潘": "Phillip"}}, {"name": "悲惨世界", "roles": {"官杀男": "安灼拉", "变种：社畜牛马命苦男妈妈": "冉阿让", "变种：高洁堕落者": "沙威", "女性变种：有意的性感尤物": "德纳第太太（虽然她颜值不行）", "变种：反讽型叙事者 / 观察者": "大R", "变种（预备）：明亮正向晨间剧女主，野草型": "珂赛特"}}, {"name": "冰雪奇缘", "roles": {"官杀男": "Elsa", "炽烈真诚野性大傻子": "Kristoff", "变种：克制忠仆骑士": "Olaf", "明亮自信伤官浪子": "Anna", "变种：Trickstar": "Olaf", "变种：腹黑温雅助攻男二（出门面美人）": "王子"}}, {"name": "头脑特工队", "roles": {"炽烈真诚野性大傻子": "Anger", "变种：克制忠仆骑士": "Bimbo", "女性变种：有意的性感尤物": "Disgust", "阴郁雨中自毁大狗狗": "Sadness", "变种（预备）：明亮正向晨间剧女主，野草型": "Joy"}}, {"name": "双峰", "roles": {"变种：社畜牛马命苦男妈妈": "警长", "女性变种：有意的性感尤物": "Audrey", "阴郁雨中自毁大狗狗": "James Hurley", "疯癫的贤者": "木头小姐", "彼得潘": "Bobby"}}, {"name": "福尔摩斯", "roles": {"变种：社畜牛马命苦男妈妈": "华生", "炽烈真诚野性大傻子": "Lestrade", "明亮自信伤官浪子": "福尔摩斯", "女性变种2：攻击性（对内对外异常的毁灭感和死本能）": "Irene Adler", "大母神": "Hudson"}}, {"name": "博德之门", "roles": {"官杀男": "莱埃泽尔", "炽烈真诚野性大傻子": "卡拉克", "明亮自信伤官浪子": "威尔", "阴郁雨中自毁大狗狗": "阿斯代伦、影心", "变种：腹黑温雅助攻男二（出门面美人）": "Gale"}}, {"name": "夜班奴隶", "roles": {"官杀男": "陆泽远", "变种：协助作恶者": "杜尚荣", "女性变种2：攻击性（对内对外异常的毁灭感和死本能）": "梅星河", "阴郁雨中自毁大狗狗": "齐渊", "变种：腹黑温雅助攻男二（出门面美人）": "白辰", "疯癫的贤者": "阿清", "大母神": "陆萍", "彼得潘": "卫承龙"}}];
+
+// 两套坐标配置
+const AXES = [
+  { id:'base', xKey:'x',  yKey:'y',
+    xText:'主动程度  ⟵ 被动 ｜ 主动 ⟶',
+    yText:'对结构/体系的态度  ⟵ 反结构 ｜ 亲结构 ⟶',
+    note:'当前：横轴=主动程度（左=被动，右=主动） · 纵轴=对结构/体系的态度（下=反结构，上=亲结构）'
+  },
+  { id:'tone', xKey:'x2', yKey:'y2',
+    // 你要求：轻在右、重在左 → x 取相反数；清在上、浊在下 → y 保持正向
+    xSign: -1, ySign: 1,
+    xText:'重  ⟵           ｜           轻  ⟶',
+    yText:'浊  ⟵           ｜           清  ⟶',
+    note:'当前：横轴=轻/重（左=重，右=轻） · 纵轴=清/浊（下=浊，上=清）'
+  }
+];
+let CUR = AXES[0];
+
+// ---------- SVG & 尺寸（右侧 GUTTER 专供标签） ----------
+const svg = d3.select("#svg")
+  .attr("viewBox", "0 0 960 640")
+  .attr("preserveAspectRatio", "xMidYMid meet");
+const width = 960, height = 640;
+const GUTTER = 160;
+const margin = {top:20, right:20, bottom:35, left:35};
+let w = width  - margin.left - margin.right - GUTTER;
+let h = height - margin.top  - margin.bottom;
+
+const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+// 颜色：masc 0=红(更女性化) → 1=蓝(更男性化)
+const color = d3.scaleSequential(d3.interpolateRdBu).domain([0,1]);
+
+// 裁剪主绘图区（点/线不越界）
+svg.append("defs").append("clipPath").attr("id","plotClip")
+  .append("rect").attr("x", margin.left).attr("y", margin.top).attr("width", w).attr("height", h);
+
+// 箭头 marker
+svg.append("defs").append("marker")
+  .attr("id","arrow").attr("viewBox","0 0 10 10")
+  .attr("refX",10).attr("refY",5).attr("markerWidth",6).attr("markerHeight",6)
+  .attr("orient","auto-start-reverse")
+  .append("path").attr("d","M 0 0 L 10 5 L 0 10 z").attr("fill","#60a5fa").attr("opacity",0.8);
+
+// ---- 坐标/网格
+const x = d3.scaleLinear().domain([-100,100]).range([0,w]);
+const y = d3.scaleLinear().domain([-100,100]).range([h,0]);
+
+const grid = g.append("g");
+const gx = g.append("g").attr("transform",`translate(0,${h})`);
+const gy = g.append("g");
+
+const zeroX = g.append("line").attr("stroke","#cbd5e1").attr("stroke-dasharray","3,3");
+const zeroY = g.append("line").attr("stroke","#cbd5e1").attr("stroke-dasharray","3,3");
+
+// 右侧 GUTTER 背景 + 分隔线
+const gutterBg = g.append("rect").attr("fill", "#f8fafc");
+const gutterLine = g.append("line").attr("stroke", "#e5e7eb").attr("stroke-dasharray", "2,4");
+
+// 轴标签
+const xLabel = svg.append("text").attr("class","axisLabel").attr("text-anchor","middle");
+const yLabel = svg.append("text").attr("class","axisLabel").attr("text-anchor","middle").attr("transform","rotate(-90)");
+const axesNote = d3.select("#axesNote");
+
+// ---- 数据：变种→原型链接
+const ARCH_INDEX = new Map(POSITIONS.map(d => [d.archetype, d]));
+const linksData = POSITIONS.filter(d => d.parent && String(d.parent).trim().length > 0)
+  .map(d => ({ source: d, target: ARCH_INDEX.get(d.parent) })).filter(l => l.target);
+
+const childCount = {};
+linksData.forEach(l => { childCount[l.target.archetype] = (childCount[l.target.archetype] || 0) + 1; });
+
+// ---- 图层
+const linkLayer  = g.append("g").attr("clip-path","url(#plotClip)").style("pointer-events","none");
+const nodeLayer  = g.append("g").attr("clip-path","url(#plotClip)");
+const pulseLayer = g.append("g").attr("clip-path","url(#plotClip)");
+const labelLayer = g.append("g"); // 不裁剪：标签可伸到 GUTTER
+
+// 链接
+const linkSel = linkLayer.selectAll("line").data(linksData).join("line")
+  .attr("stroke", "#9ec5fe").attr("stroke-width", 1.5).attr("opacity", 0.7)
+  .attr("marker-end", "url(#arrow)");
+
+// 点
+const nodeSel = nodeLayer.selectAll("circle").data(POSITIONS, d=>d.archetype).join("circle")
+  .attr("class","node")
+  .attr("r", d => childCount[d.archetype] ? 8 : 6)
+  .attr("data-arch", d => d.archetype)
+  .attr("fill", d => color(+d.masc))
+  .attr("stroke", "#0b111a").attr("stroke-width", 1.2);
+
+// 标签
+const labelSel = labelLayer.selectAll("text").data(POSITIONS, d=>d.archetype).join("text")
+  .attr("class","nodeLabel")
+  .each(function(d){ const t = d3.select(this); t.text(null); t.append("tspan").attr("class","arch").text(d.archetype); });
+
+// 工具：取当前坐标值
+const getXv = d => (CUR.xSign || 1) * (+d[CUR.xKey]);
+const getYv = d => (CUR.ySign || 1) * (+d[CUR.yKey]);
+
+// 布局：默认点右侧；出主区则放入 GUTTER；底部溢出则翻到上方
+function layoutOne(sel, d){
+  const cx = x(getXv(d)), cy = y(getYv(d));
+  let labelX = cx + 8, baseY = cy + 4;
+  if (labelX > w - 8) labelX = w + 8; // 放进 GUTTER
+  sel.attr("text-anchor","start").attr("x", labelX).attr("y", baseY);
+  sel.select("tspan.arch").attr("x", labelX).attr("dy", 0);
+  const role = sel.select("tspan.role"); const hasRole = !!role.node();
+  if (hasRole) role.attr("x", labelX).attr("dy", 14);
+  const box = sel.node().getBBox();
+  if (cy + 6 + box.height > h) {
+    sel.attr("y", cy - 6);
+    sel.select("tspan.arch").attr("dy", 0);
+    if (hasRole) role.attr("dy", -14);
+  }
+}
+function layoutAll(){ labelSel.each(function(d){ layoutOne(d3.select(this), d); }); }
+
+// 初始渲染（不带动画）
+function positionAll(noAnim=false){
+  const s = noAnim ? (sel=>sel) : (sel=>sel.transition().duration(500).ease(d3.easeCubicOut));
+  s(nodeSel).attr("cx", d => x(getXv(d))).attr("cy", d => y(getYv(d)));
+  s(linkSel)
+    .attr("x1", d => x(getXv(d.source))).attr("y1", d => y(getYv(d.source)))
+    .attr("x2", d => x(getXv(d.target))).attr("y2", d => y(getYv(d.target)));
+  // 标签即时定位（不动画，避免抖动）
+  layoutAll();
+}
+
+// 布局固定元素（轴/网格/零线/标签文字等）
+function layoutStatic(){
+  x.range([0,w]); y.range([h,0]);
+  grid.selectAll("*").remove();
+  grid.append("g").call(d3.axisBottom(x).tickSize(-h).ticks(10)).attr("transform",`translate(0,${h})`);
+  grid.append("g").call(d3.axisLeft(y).tickSize(-w).ticks(10));
+
+  gx.selectAll("*").remove(); gy.selectAll("*").remove();
+  gx.call(d3.axisBottom(x).ticks(5)).attr("transform",`translate(0,${h})`);
+  gy.call(d3.axisLeft(y).ticks(5));
+
+  zeroX.attr("x1",x(0)).attr("x2",x(0)).attr("y1",0).attr("y2",h);
+  zeroY.attr("y1",y(0)).attr("y2",y(0)).attr("x1",0).attr("x2",w);
+
+  gutterBg.attr("x", w).attr("y", 0).attr("width", 160).attr("height", h);
+  gutterLine.attr("x1", w).attr("x2", w).attr("y1", 0).attr("y2", h);
+
+  xLabel.attr("x", margin.left + w/2).attr("y", height-6).text(CUR.xText);
+  yLabel.attr("x", - (margin.top + h/2)).attr("y", 14).text(CUR.yText);
+  axesNote.text(CUR.note);
+}
+
+// 先布局静态，再定位元素
+layoutStatic();
+positionAll(true);
+
+// ---- Works 列表/交互（支持锁定） -------------------------------------
+const list = d3.select("#list");
+const count = d3.select("#count");
+const legend = d3.select("#legend");
+const rolesBox = d3.select("#archRoles");
+const q = document.getElementById('q');
+const axesSel = document.getElementById('axesSel');
+
+let lockedWork = null;    // 当前锁定的作品
+let currentList = WORKS;  // 当前列表
+let selectedArch = null;  // 当前选中的原型
+
+function renderList(items){
+  currentList = items;
+  list.selectAll("*").remove();
+  const row = list.selectAll(".work")
+    .data(items, d=>d.name)
+    .join("div")
+    .attr("class","work")
+    .classed("active", d => lockedWork && lockedWork.name === d.name)
+    .on("mouseenter", (e,d)=> { if(!lockedWork) highlightWork(d); })
+    .on("mouseleave", () => { if(!lockedWork) clearHighlight(); })
+    .on("click", (e,d) => {
+      if (lockedWork && lockedWork.name === d.name) { setLockedWork(null); }
+      else { setLockedWork(d); }
+    });
+  row.append("div").text(d=>d.name);
+  row.append("span").attr("class","muted").text(d=> Object.keys(d.roles).length + " 角色");
+  count.text(items.length + " 部作品");
+}
+renderList(WORKS);
+
+function setLockedWork(work){
+  lockedWork = work;
+  list.selectAll(".work").classed("active", d => lockedWork && d.name === lockedWork.name);
+  if (lockedWork) highlightWork(lockedWork); else clearHighlight();
+}
+
+function applyRoleLines(roles){
+  labelSel.each(function(d){
+    const t = d3.select(this);
+    t.selectAll("tspan.role").remove();
+    const who = roles[d.archetype];
+    if (who){ t.append("tspan").attr("class","role").text(who); }
+  });
+  layoutAll();
+}
+
+function clearHighlight(){
+  nodeSel.classed("highlight", false).attr("opacity", .9).attr("stroke-width", 1.2);
+  linkSel.attr("stroke", "#9ec5fe").attr("opacity",0.7);
+  pulseLayer.selectAll("*").remove();
+  legend.selectAll("*").remove();
+  applyRoleLines({});
+  layoutAll();
+}
+
+function highlightWork(work){
+  clearHighlight();
+  const roles = work.roles;
+  const entries = Object.entries(roles);
+  const toHi = new Set(entries.map(([arch]) => arch));
+  entries.forEach(([arch])=>{ const p = ARCH_INDEX.get(arch)?.parent; if (p) toHi.add(p); });
+
+  nodeSel.each(function(d){
+    const isHi = toHi.has(d.archetype);
+    d3.select(this).classed("highlight", isHi)
+      .attr("opacity", isHi ? 1 : 0.35)
+      .attr("stroke-width", isHi ? 2 : 1.2);
+    if (isHi){
+      pulseLayer.append("circle").attr("class","pulse")
+        .attr("cx", x(getXv(d))).attr("cy", y(getYv(d))).attr("r", 0);
+    }
+  });
+
+  linkSel
+    .attr("stroke", d => (toHi.has(d.source.archetype) || toHi.has(d.target.archetype)) ? "#60a5fa" : "#9ec5fe")
+    .attr("opacity", d => (toHi.has(d.source.archetype) || toHi.has(d.target.archetype)) ? 0.95 : 0.35);
+
+  applyRoleLines(roles);
+
+  legend.append("h3").text(work.name + " · 角色映射");
+  entries.sort((a,b)=> a[0].localeCompare(b[0], 'zh-Hans-CN')).forEach(([arch, who])=>{
+    legend.append("div").attr("class","line").text(arch + "： " + who);
+  });
+}
+
+// 点击原型点：显示“全作品角色”
+function renderArchRoles(arch){
+  rolesBox.selectAll("*").remove();
+  if (!arch){ return; }
+  const items = [];
+  WORKS.forEach(w => { if (w.roles[arch]) items.push({work:w.name, who:w.roles[arch]}); });
+  rolesBox.append("h3").text(arch + " · 全作品角色（" + items.length + "）");
+  items.forEach(it => rolesBox.append("div").attr("class","line").text(it.work + "： " + it.who));
+}
+nodeSel.on("click", (e,d) => {
+  if (selectedArch === d.archetype){
+    selectedArch = null;
+    nodeSel.classed("selected", false);
+    renderArchRoles(null);
+  } else {
+    selectedArch = d.archetype;
+    nodeSel.classed("selected", n => n.archetype === selectedArch);
+    renderArchRoles(selectedArch);
+  }
+});
+
+// 搜索
+q.addEventListener('input', () => {
+  const term = q.value.trim().toLowerCase();
+  const filtered = term ? WORKS.filter(w => w.name.toLowerCase().includes(term)) : WORKS;
+  renderList(filtered);
+  if (lockedWork) { setLockedWork(lockedWork); }
+});
+
+// 切换坐标系
+axesSel.addEventListener('change', (e)=>{
+  const id = e.target.value;
+  CUR = AXES.find(a => a.id === id) || AXES[0];
+  // 更新轴标签/注释
+  layoutStatic();
+  // 清除脉冲，按新坐标重绘位置
+  pulseLayer.selectAll("*").remove();
+  positionAll(false);
+  // 若有锁定作品，按新坐标重新高亮
+  if (lockedWork) highlightWork(lockedWork);
+});
+
+function layoutStatic(){
+  // 这些尺寸不变时只更新文本；若你想将来支持改比例/GUTTER，也可在这里重算 w/h
+  x.range([0,w]); y.range([h,0]);
+  grid.selectAll("*").remove();
+  grid.append("g").call(d3.axisBottom(x).tickSize(-h).ticks(10)).attr("transform",`translate(0,${h})`);
+  grid.append("g").call(d3.axisLeft(y).tickSize(-w).ticks(10));
+  gx.selectAll("*").remove(); gy.selectAll("*").remove();
+  gx.call(d3.axisBottom(x).ticks(5)).attr("transform",`translate(0,${h})`);
+  gy.call(d3.axisLeft(y).ticks(5));
+  zeroX.attr("x1",x(0)).attr("x2",x(0)).attr("y1",0).attr("y2",h);
+  zeroY.attr("y1",y(0)).attr("y2",y(0)).attr("x1",0).attr("x2",w);
+  gutterBg.attr("x", w).attr("y", 0).attr("width", 160).attr("height", h);
+  gutterLine.attr("x1", w).attr("x2", w).attr("y1", 0).attr("y2", h);
+  xLabel.attr("x", margin.left + w/2).attr("y", height-6).text(CUR.xText);
+  yLabel.attr("x", - (margin.top + h/2)).attr("y", 14).text(CUR.yText);
+  d3.select("#axesNote").text(CUR.note);
+}
+</script>
+</body>
+</html>

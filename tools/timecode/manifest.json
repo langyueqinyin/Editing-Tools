@@ -1,0 +1,7 @@
+{
+  "slug": "timecode",
+  "name": "时间码批量计算器",
+  "desc": "批量差值/加值，支持 NDF/DF、多帧率与中英切换",
+  "entry": "web:bp",
+  "order": 1
+}
