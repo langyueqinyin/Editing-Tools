@@ -99,3 +99,8 @@ menu{ display:flex; gap:10px; justify-content:flex-end; padding: 10px 0 0; }
 .card{ display:block; background:#0f131b; border:1px solid var(--border); border-radius:14px; padding:16px; text-decoration:none; color:var(--text); }
 .card:hover{ border-color:#2a3143; transform: translateY(-1px); }
 .pill{ display:inline-block; padding:4px 8px; background:#121624; border:1px solid var(--border); border-radius:999px; margin-top:8px; font-size:12px; }
+
+.hero {
+  margin-left: 40px;   /* 你可以改成 32px / 48px，看你喜欢 */
+  margin-right: 40px;
+}
