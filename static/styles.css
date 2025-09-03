@@ -100,7 +100,13 @@ menu{ display:flex; gap:10px; justify-content:flex-end; padding: 10px 0 0; }
 .card:hover{ border-color:#2a3143; transform: translateY(-1px); }
 .pill{ display:inline-block; padding:4px 8px; background:#121624; border:1px solid var(--border); border-radius:999px; margin-top:8px; font-size:12px; }
 
-.hero {
-  margin-left: 40px;   /* 你可以改成 32px / 48px，看你喜欢 */
-  margin-right: 40px;
-}
+/* 标题和卡片整体离左右各 40px，你可改 32/48 试手感 */
+.hero, .cards { margin-left: 40px; margin-right: 40px; }
+
+/* 让标题和按钮排成一行、留点间距 */
+.lang-wrap { display: flex; align-items: center; gap: 12px; }
+
+/*（可选）标题区上下留白、文字更稳重点 */
+.hero { padding: 28px 0; }
+.hero h1 { margin: 0 0 6px; font-size: 28px; }
+.hero p  { margin: 0; color: var(--muted); }
