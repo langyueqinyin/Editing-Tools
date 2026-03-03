@@ -203,9 +203,10 @@ ready(function(){
   const grid=document.getElementById('grid');
   function makeRow(){
     const row=document.createElement('div'); row.className='row';
+    const dict=I18N[getLang()]||I18N.en;
     row.innerHTML=`
-      <input class="tc-input a" placeholder="${I18N.en.aPlaceholder}" />
-      <input class="tc-input b" placeholder="${I18N.en.bPlaceholder}" />
+      <input class="tc-input a" placeholder="${dict.aPlaceholder}" />
+      <input class="tc-input b" placeholder="${dict.bPlaceholder}" />
       <div class="res-cell">
         <div class="res-tc" title="Timecode result"></div>
         <div class="res-frames" title="Total frames"></div>
@@ -358,7 +359,7 @@ ready(function(){
         : row.querySelector('.res-frames').textContent.trim();
     }).filter(Boolean);
     if(!vals.length) return;
-    const text=vals.join('\\n');
+    const text=vals.join('\n');
     (navigator.clipboard?.writeText(text) || Promise.reject())
       .catch(()=>{
         const ta=document.createElement('textarea');

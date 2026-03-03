@@ -105,6 +105,7 @@ menu{ display:flex; gap:10px; justify-content:flex-end; padding: 10px 0 0; }
 
 /* 让标题和按钮排成一行、留点间距 */
 .lang-wrap { display: flex; align-items: center; gap: 12px; }
+.grid-actions { display: flex; gap: 10px; padding: 10px 0; }
 
 /*（可选）标题区上下留白、文字更稳重点 */
 .hero { padding: 28px 0; }

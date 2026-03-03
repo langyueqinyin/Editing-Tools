@@ -1,10 +1,8 @@
-from flask import Flask, render_template_string
 from pathlib import Path
 import pandas as pd
 import json
 
 APP_DIR = Path(__file__).resolve().parent
-app = Flask(__name__)
 
 def load_data():
     pos_df = pd.read_csv(APP_DIR / 'data' / 'archetype_positions.csv', encoding='utf-8-sig')
@@ -42,16 +40,6 @@ def load_data():
                      for _, r in notes_df.iterrows() if pd.notna(r['archetype'])}
 
     return positions, works, notes
-
-@app.route("/")
-def index():
-    positions, works, notes = load_data()
-    return render_template_string(
-        TPL,
-        positions=json.dumps(positions, ensure_ascii=False),
-        works=json.dumps(works, ensure_ascii=False),
-        notes=json.dumps(notes, ensure_ascii=False)   # NEW
-    )
 
 TPL = r'''<!doctype html>
 <html lang="zh-CN">
@@ -93,8 +81,8 @@ TPL = r'''<!doctype html>
   .tick line{stroke:var(--grid)}
   .domain{stroke:#cbd5e1}
 
-  .node{ transition: opacity .12s ease; transform:none !important; }
-  .node:hover{ opacity:1; stroke-width:2.2; }  /* 不再 scale */
+  .node{ transition: opacity .12s ease; transform:none; }
+  .node:hover{ opacity:1; stroke-width:2.2; }
   .node.selected{stroke:var(--accent) !important; stroke-width:2.8 !important}
 
   .nodeLabel{fill:#334155; font-size:11px; opacity:.9; pointer-events:none}
@@ -191,15 +179,6 @@ TPL = r'''<!doctype html>
   #plot .tick line, #plot .domain{ pointer-events:none; } /* 网格/轴线 */
   .links line{ pointer-events:none; } /* 如果你给连线层起名不是 .links，忽略这条 */
 
-  /* 圆点：别用 transform 放大，改成描边高亮（最稳） */
-  .node{ transition: opacity .12s ease; transform:none; }
-  .node:hover{ opacity:1; stroke-width:2.2; }
-  /* 别用 transform 放大；用描边高亮 */
-  .node{ transition: opacity .12s ease; transform:none; }
-  .node:hover{ opacity:1; stroke-width:2.2; }
-
-  /* 非交互层不抢鼠标 */
-  .nodeLabel,.pulse{ pointer-events:none; }
   
   /* 三列：左=作品（可折叠），中=图表，右=洞见 */
 :root{ --listw: 280px; --insw: 360px; }
@@ -501,28 +480,6 @@ function positionAll(noAnim=false){
   layoutAll();
 }
 
-// 布局固定元素（轴/网格/零线/标签文字等）
-function layoutStatic(){
-  x.range([0,w]); y.range([h,0]);
-  grid.selectAll("*").remove();
-  grid.append("g").call(d3.axisBottom(x).tickSize(-h).ticks(10)).attr("transform",`translate(0,${h})`);
-  grid.append("g").call(d3.axisLeft(y).tickSize(-w).ticks(10));
-
-  gx.selectAll("*").remove(); gy.selectAll("*").remove();
-  gx.call(d3.axisBottom(x).ticks(5)).attr("transform",`translate(0,${h})`);
-  gy.call(d3.axisLeft(y).ticks(5));
-
-  zeroX.attr("x1",x(0)).attr("x2",x(0)).attr("y1",0).attr("y2",h);
-  zeroY.attr("y1",y(0)).attr("y2",y(0)).attr("x1",0).attr("x2",w);
-
-  gutterBg.attr("x", w).attr("y", 0).attr("width", 160).attr("height", h);
-  gutterLine.attr("x1", w).attr("x2", w).attr("y1", 0).attr("y2", h);
-
-  xLabel.attr("x", margin.left + w/2).attr("y", height-6).text(CUR.xText);
-  yLabel.attr("x", - (margin.top + h/2)).attr("y", 14).text(CUR.yText);
-  axesNote.text(CUR.note);
-}
-
 // 先布局静态，再定位元素
 layoutStatic();
 positionAll(true);
@@ -633,18 +590,6 @@ function renderArchRoles(arch){
   noteBox.append("h3").text(`${arch} · 原型注记`);
   noteBox.append("div").attr("class","text").text(txt ? txt : "（暂无笔记）");
 }
-nodeSel.on("click", (e,d) => {
-  if (selectedArch === d.archetype){
-    selectedArch = null;
-    nodeSel.classed("selected", false);
-    renderArchRoles(null);
-  } else {
-    selectedArch = d.archetype;
-    nodeSel.classed("selected", n => n.archetype === selectedArch);
-    renderArchRoles(selectedArch);
-  }
-});
-
 // 搜索
 q.addEventListener('input', () => {
   const term = q.value.trim().toLowerCase();
@@ -688,5 +633,3 @@ function layoutStatic(){
 </html>
 '''
 
-if __name__ == "__main__":
-    app.run(debug=True, host="127.0.0.1", port=5000, use_reloader=False)
